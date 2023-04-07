@@ -1,0 +1,218 @@
+ <!DOCTYPE html>
+<html>
+<style>
+.visible {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 2s linear;
+}
+.hidden {
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s 2s, opacity 2s linear;
+}
+
+body {    
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.internal {
+    width: 100%;
+    overflow:hidden;
+}
+
+#container {
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+ }
+object {
+  width: 100%;
+  pointer-events: none;
+}
+</style>
+
+<body padding=0 bgcolor=black onload="loadslides()">
+    <div id="container">
+
+    </div>
+</body>
+    <script>
+document.onkeydown = checkKey;
+document.body.addEventListener("click", function (evt) {
+    console.log(evt.target);
+    drawNext();
+});
+var layers = {}
+var ignores = {}
+var slides= []
+
+
+var currentLayerIndex = 0
+function checkKey(e) {
+
+    e = e || window.event;
+
+    if (e.keyCode == '38') {
+        // up arrow
+    }
+    else if (e.keyCode == '40') {
+        // down arrow
+    }
+    else if (e.keyCode == '37' || e.keyCode == '33') {
+        currentLayerIndex-=2
+        drawNext()
+    }
+    else if (e.keyCode == '39' || e.keyCode == '34') {
+        // right arrow
+        drawNext()
+    }
+
+}
+
+sliden = 0
+slidepaths = [
+"Slide0.svg",
+"Slide1.svg",
+"Slide2.svg",
+"Slide3_animated.svg",
+"Slide4.svg",
+"Slide5_prior_work.svg",
+"Slide6_lens_animated.svg",
+"Slide7.svg",
+"Slide8.svg",
+"Slide9.svg",
+"Slide10_Results.svg",
+"Slide11_Bugs.svg",
+"Slide12_Upstream.svg",
+"Slide13_Conclusion.svg",
+]
+
+
+
+function drawNext(){
+    if(currentLayerIndex >= Object.keys(layers).length && sliden+1 == slides.length) {
+        currentLayerIndex = Object.keys(layers).length-1
+    }
+    if(currentLayerIndex >= Object.keys(layers).length) {
+        currentLayerIndex = 0;
+        slides[sliden].setAttribute("style", "display:none")
+        slides[++sliden].setAttribute("style","visibility: visible; opacity: 1.0; transition: visibility 0s 0.2s, opacity 0.2s linear; " )
+        loadImage()
+    }
+    if(currentLayerIndex < 0) {
+        currentLayerIndex = 0;
+        if(sliden > 0) {
+            slides[sliden].setAttribute("style", "display:none")
+            slides[--sliden].setAttribute("style", "display:visible")
+            loadImage()
+            currentLayerIndex = Object.keys(layers).length-1;
+        }
+    }
+    currentLayer = Number(Object.keys(layers)[currentLayerIndex])
+    console.log(currentLayer)
+    ignoretext = []
+    for (k of Object.keys(layers).sort()) {
+        if (Number(k) <= Number(currentLayer)) {
+        console.log("ign "+ k)
+            for (kt of ignores[k]) {
+                ignoretext.push(kt)
+            }
+        }
+    }
+    console.log(ignoretext)
+    for (k of Object.keys(layers).sort()) {
+        for (elem of layers[k]) {
+            name = elem.getAttribute("inkscape:label")
+            ign = false
+            for (kt of ignoretext) {
+                if (name.includes(kt) && !name.includes(kt+"}")) {
+                    ign = true
+                }
+            }
+            console.log(name + " " + ign)
+            k = Number(k)
+            if (((k <= currentLayer && !name.includes("#INV") ) || (k > currentLayer && name.includes("#INV") )) && !ign){
+                //if (!elem.getAttribute("style") || !elem.getAttribute("style").includes("visible;") && currentLayerIndex != 0) {
+                    elem.setAttribute("style","visibility: visible; opacity: 1; transition: visibility 0s 0.2s, opacity 0.2s linear;" )
+                //}
+            } else {
+                //if (!elem.getAttribute("style") || !elem.getAttribute("style").includes("hidden;")) {
+                if(currentLayerIndex != 0) {
+                    elem.setAttribute("style","visibility: visible; opacity: 0; transition: visibility 0s 0.2s, opacity 0.2s linear;" )
+                } else {
+                    elem.setAttribute("style", "opacity:0")
+                }
+                //} 
+                //elem.setAttribute("style", "opacity:0")
+            }
+        }
+    }
+    if(currentLayerIndex < Object.keys(layers).length){
+        currentLayerIndex +=1 
+    }
+}
+        function loadImage() {
+            layers = {}
+            ignores = {}
+            svgdoc = slides[sliden].contentDocument
+            const allInBody = svgdoc.querySelectorAll("g");
+            for (element of allInBody) {
+                if (element.nodeName == "g" && element.getAttribute("inkscape:label") && isNaN(element.getAttribute("inkscape:label").split(" ")[0]) == false) {
+                    name = element.getAttribute("inkscape:label")
+                    num = Number(name.split(" ")[0])
+                    console.log(num)
+                    console.log(name)
+                    if(!(num in layers)){
+                        layers[num] = []
+                    }
+                    layers[num].push(element)
+                    if(!(num in ignores)){
+                        ignores[num] = [] 
+                    }
+                    var reg = /#RM\{(.*?)\}/g;
+                    var result;
+                    while((result = reg.exec(name)) !== null) {
+                        ignores[num].push(result[1])
+                        console.log(ignores)
+                    }
+                }
+            }
+            console.log(layers)
+            console.log(ignores)
+        }
+
+function pn(i) {
+    slides[i].contentDocument.querySelector("svg").innerHTML = slides[i].contentDocument.querySelector("svg").innerHTML.replace(">(p)", ">"+i);
+}
+
+function loadslides() {
+    i = 0
+    for (const path of slidepaths) {
+        console.log(path)
+        slides[i] = document.createElement("object");
+        slides[i].setAttribute("type", "image/svg+xml");
+        if(i == 0){
+            slides[i].setAttribute("onload", "loadImage();drawNext();pn(0)");
+        } else {
+            slides[i].setAttribute("onload", "pn("+i+")");
+        }
+        slides[i].setAttribute("data", path);
+        slides[i].setAttribute("height", "100%");
+        slides[i].setAttribute("width", "100%");
+        slides[i].setAttribute("class", "internal");
+        slides[i].setAttribute("class", "l");
+        slides[i].setAttribute("id", "svgClass"+i);
+        document.getElementById("container").appendChild(slides[i])
+        i+=1
+    }
+
+}
+    </script>
+</html>
+
+
